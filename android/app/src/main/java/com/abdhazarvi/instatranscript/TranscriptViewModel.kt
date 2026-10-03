@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 class TranscriptViewModel : ViewModel() {
     var isBusy by mutableStateOf(false)
@@ -50,7 +51,11 @@ class TranscriptViewModel : ViewModel() {
                 transcript = result.transcript
                 title = result.title
                 detectedLanguage = result.detectedLanguage ?: language
-                filenameBase = if (result.account.isBlank()) result.title else result.title + " by " + result.account
+                filenameBase = if (result.account.isBlank()) {
+                    result.title
+                } else {
+                    result.title + " by " + result.account
+                }
                 isBusy = false
             } catch (t: Throwable) {
                 isBusy = false
@@ -65,7 +70,8 @@ class TranscriptViewModel : ViewModel() {
     }
 
     fun safeFilename(extension: String): String =
-        filenameBase.replace(Regex("[\\\\/:*?"<>|\\r\\n]+"), "_")
+        filenameBase
+            .replace(Regex("""[\\/:*?"<>|\r\n]+"""), "_")
             .trim()
             .ifBlank { "instagram-transcript" } + "." + extension
 
@@ -73,21 +79,11 @@ class TranscriptViewModel : ViewModel() {
         val body = transcript.orEmpty()
         return when (exportType) {
             "md" -> "# " + title.orEmpty() + "\n\n" + body + "\n"
-            "json" -> {
-                val escapedTitle = title.orEmpty()
-                    .replace("\\\\", "\\\\\\\\")
-                    .replace(""", "\\\"")
-                    .replace("\n", "\\\\n")
-                    .replace("\r", "\\\\r")
-                val escapedLanguage = detectedLanguage.orEmpty()
-                    .replace(""", "\\\"")
-                val escapedBody = body
-                    .replace("\\\\", "\\\\\\\\")
-                    .replace(""", "\\\"")
-                    .replace("\n", "\\\\n")
-                    .replace("\r", "\\\\r")
-                """{"title":"$escapedTitle","detected_language":"$escapedLanguage","transcript":"$escapedBody"}"""
-            }
+            "json" -> JSONObject()
+                .put("title", title.orEmpty())
+                .put("detected_language", detectedLanguage.orEmpty())
+                .put("transcript", body)
+                .toString()
             else -> body + "\n"
         }
     }

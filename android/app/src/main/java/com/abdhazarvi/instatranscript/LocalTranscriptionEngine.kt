@@ -3,8 +3,8 @@ package com.abdhazarvi.instatranscript
 import android.content.Context
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.ReturnCode
-import com.yausername.youtubedl_android.YoutubeDL
-import com.yausername.youtubedl_android.YoutubeDLRequest
+import dev.ffmpegkit_maintained.ytdlp.YtDlp
+import dev.ffmpegkit_maintained.ytdlp.YtDlpRequest
 import dev.ffmpegkit.whisper.Whisper
 import dev.ffmpegkit.whisper.WhisperConfig
 import kotlinx.coroutines.Dispatchers
@@ -33,28 +33,28 @@ class LocalTranscriptionEngine(private val context: Context) {
 
         try {
             onStatus("Preparing local downloader…", 2)
-            YoutubeDL.getInstance().init(context.applicationContext)
+            YtDlp.init(context.applicationContext)
 
             val mediaTemplate = File(workDir, "media.%(ext)s").absolutePath
-            val request = YoutubeDLRequest(instagramUrl)
-            request.addOption("--no-playlist")
-            request.addOption("--no-mtime")
-            request.addOption("--print", "after_move:%(title)s|||%(uploader)s")
-            request.addOption("-f", "bestaudio/best")
-            request.addOption("-o", mediaTemplate)
+            val request = YtDlpRequest(instagramUrl)
+                .setOutputTemplate(mediaTemplate)
+                .addOption("--no-playlist")
+                .addOption("--no-mtime")
+                .addOption("--print", "after_move:%(title)s|||%(uploader)s")
+                .addOption("-f", "bestaudio/best")
 
+            var metadataLine = ""
             onStatus("Downloading Instagram media…", 5)
-            val response = YoutubeDL.getInstance().execute(
-                request,
-                "insta-" + UUID.randomUUID().toString(),
-                { progress, _, _ ->
-                    onStatus(
-                        "Downloading Instagram media…",
-                        5 + (progress * 0.45f).toInt()
-                    )
-                    kotlin.Unit
+
+            val response = YtDlp.execute(request) { progress, _, line ->
+                if (line.contains("|||")) {
+                    metadataLine = line.trim()
                 }
-            )
+                onStatus(
+                    "Downloading Instagram media…",
+                    5 + (progress * 0.45f).toInt()
+                )
+            }
 
             val media = workDir.listFiles()
                 ?.firstOrNull {
@@ -63,29 +63,19 @@ class LocalTranscriptionEngine(private val context: Context) {
                 }
                 ?: error("Instagram media download completed but no media file was found.")
 
-            check(response.exitCode == 0) {
-                response.err.takeLast(1000).ifBlank {
-                    "Instagram download failed."
-                }
+            check(response.isSuccess) {
+                "Instagram download failed (exit " + response.exitCode + ")."
             }
 
-            val metadata = response.out
-                .lineSequence()
-                .map { it.trim() }
-                .filter { it.contains("|||") }
-                .lastOrNull()
-
-            val title = metadata
-                ?.substringBefore("|||")
-                ?.trim()
-                ?.takeIf { it.isNotBlank() }
+            val title = metadataLine
+                .substringBefore("|||")
+                .trim()
+                .takeIf { it.isNotBlank() }
                 ?: "Instagram Transcript"
 
-            val account = metadata
-                ?.substringAfter("|||")
-                ?.trim()
-                ?.takeIf { it.isNotBlank() }
-                ?: ""
+            val account = metadataLine
+                .substringAfter("|||", "")
+                .trim()
 
             onStatus("Converting audio locally…", 52)
             val wav = File(workDir, "audio.wav")

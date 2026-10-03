@@ -14,7 +14,17 @@ android {
         versionCode = 2
         versionName = "0.2.0"
     }
-    buildTypes { release { isMinifyEnabled = false } }
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
     splits {
         abi {
             isEnable = true
@@ -23,7 +33,13 @@ android {
             isUniversalApk = false
         }
     }
-    packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
+    packaging {
+        jniLibs {
+            pickFirsts += "lib/arm64-v8a/libc++_shared.so"
+            pickFirsts += "lib/x86_64/libc++_shared.so"
+        }
+        resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    }
 }
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2025.02.00")

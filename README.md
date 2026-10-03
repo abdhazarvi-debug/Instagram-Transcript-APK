@@ -62,3 +62,5 @@ The old backend directory remains in the repository for reference/deployment exp
 ## License
 
 MIT
+
+CI smoke-build branch: validates the self-contained Android release APK.
