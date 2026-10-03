@@ -5,6 +5,10 @@ plugins {
 }
 
 android {
+    buildFeatures {
+        compose = true
+    }
+
     namespace = "com.abdhazarvi.instatranscript"
     compileSdk = 35
 
