@@ -1,5 +1,6 @@
 package com.abdhazarvi.instatranscript
 
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -7,18 +8,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class TranscriptViewModel : ViewModel() {
-    private val api = TranscriptApi()
-
-    var jobId by mutableStateOf<String?>(null)
-        private set
     var isBusy by mutableStateOf(false)
         private set
     var progress by mutableStateOf(0)
         private set
-    var status by mutableStateOf("Waiting…")
+    var status by mutableStateOf("Ready")
         private set
     var transcript by mutableStateOf<String?>(null)
         private set
@@ -26,70 +22,40 @@ class TranscriptViewModel : ViewModel() {
         private set
     var detectedLanguage by mutableStateOf<String?>(null)
         private set
-    var filenameBase by mutableStateOf("transcript")
+    var filenameBase by mutableStateOf("instagram-transcript")
         private set
     var error by mutableStateOf<String?>(null)
         private set
 
-    private var exportType by mutableStateOf("txt")
+    private var exportType = "txt"
 
-    fun start(serverUrl: String, instagramUrl: String, language: String) {
+    fun start(context: Context, instagramUrl: String, language: String) {
         error = null
         transcript = null
         title = null
         detectedLanguage = null
-        filenameBase = "transcript"
-        isBusy = true
+        filenameBase = "instagram-transcript"
         progress = 0
-        status = "Submitting…"
-        exportType = "txt"
+        status = "Starting…"
+        isBusy = true
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.Default) {
             try {
-                val result = withContext(Dispatchers.IO) {
-                    api.createJob(
-                        serverUrl.trim().removeSuffix("/"),
-                        instagramUrl.trim(),
-                        language
-                    )
-                }
-                jobId = result.jobId
+                val result = LocalTranscriptionEngine(context.applicationContext)
+                    .transcribe(instagramUrl.trim(), language) { message, p ->
+                        progress = p.coerceIn(0, 100)
+                        status = message
+                    }
+
+                transcript = result.transcript
+                title = "Instagram Transcript"
+                detectedLanguage = result.detectedLanguage ?: language
+                filenameBase = "Instagram Transcript"
+                isBusy = false
             } catch (t: Throwable) {
                 isBusy = false
-                error = t.message ?: "Could not start transcription."
-            }
-        }
-    }
-
-    fun poll(serverUrl: String, id: String) {
-        viewModelScope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) {
-                    api.getJob(serverUrl.trim().removeSuffix("/"), id)
-                }
-
-                progress = result.progress
-                status = result.message.ifBlank { result.status }
-
-                when (result.status) {
-                    "completed" -> {
-                        transcript = result.transcript.orEmpty()
-                        title = result.title
-                        detectedLanguage = result.detectedLanguage
-                        filenameBase = result.filenameBase ?: "transcript"
-                        isBusy = false
-                        jobId = null
-                    }
-                    "error" -> {
-                        isBusy = false
-                        jobId = null
-                        error = result.error ?: "Transcription failed."
-                    }
-                }
-            } catch (t: Throwable) {
-                isBusy = false
-                jobId = null
-                error = t.message ?: "Network error."
+                error = t.message ?: "Transcription failed."
+                status = "Failed"
             }
         }
     }
@@ -99,9 +65,9 @@ class TranscriptViewModel : ViewModel() {
     }
 
     fun safeFilename(extension: String): String =
-        filenameBase.replace(Regex("[\\\\/:*?\"<>|\\r\\n]+"), "_")
+        filenameBase.replace(Regex("[\\\\/:*?"<>|\\r\\n]+"), "_")
             .trim()
-            .ifBlank { "transcript" } + "." + extension
+            .ifBlank { "instagram-transcript" } + "." + extension
 
     fun exportText(): String {
         val body = transcript.orEmpty()
@@ -110,16 +76,16 @@ class TranscriptViewModel : ViewModel() {
             "json" -> {
                 val escapedTitle = title.orEmpty()
                     .replace("\\\\", "\\\\\\\\")
-                    .replace("\"", "\\\"")
-                    .replace("\n", "\\n")
-                    .replace("\r", "\\r")
+                    .replace(""", "\\\"")
+                    .replace("\n", "\\\\n")
+                    .replace("\r", "\\\\r")
                 val escapedLanguage = detectedLanguage.orEmpty()
-                    .replace("\"", "\\\"")
+                    .replace(""", "\\\"")
                 val escapedBody = body
                     .replace("\\\\", "\\\\\\\\")
-                    .replace("\"", "\\\"")
-                    .replace("\n", "\\n")
-                    .replace("\r", "\\r")
+                    .replace(""", "\\\"")
+                    .replace("\n", "\\\\n")
+                    .replace("\r", "\\\\r")
                 """{"title":"$escapedTitle","detected_language":"$escapedLanguage","transcript":"$escapedBody"}"""
             }
             else -> body + "\n"
