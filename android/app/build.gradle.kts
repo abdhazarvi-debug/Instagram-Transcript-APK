@@ -15,6 +15,11 @@ android {
         versionName = "0.2.0"
     }
     buildTypes { release { isMinifyEnabled = false } }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
     splits {
         abi {
             isEnable = true
