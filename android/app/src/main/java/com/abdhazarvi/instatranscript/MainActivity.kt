@@ -88,7 +88,7 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
             fontWeight = FontWeight.Bold
         )
         Text(
-            "Instagram → on-device transcript",
+            "Instagram → high-accuracy on-device transcript",
             style = MaterialTheme.typography.bodyMedium
         )
         Card(modifier = Modifier.fillMaxWidth()) {
@@ -192,7 +192,7 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
                         modifier = Modifier.fillMaxWidth()
                     )
                     Text(
-                        "First use downloads the multilingual Whisper model once. Transcription itself runs locally."
+                        "First use downloads the higher-accuracy multilingual Whisper Small model (~466 MB) once. Transcription runs locally."
                     )
                 }
             }
