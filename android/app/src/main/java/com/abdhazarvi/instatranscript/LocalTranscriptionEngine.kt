@@ -111,15 +111,30 @@ class LocalTranscriptionEngine(private val context: Context) {
             try {
                 onStatus("Transcribing on this phone…", 82)
 
+                val threads = Runtime.getRuntime()
+                    .availableProcessors()
+                    .coerceIn(2, 8)
+
                 val config = when (language) {
-                    "ur" -> WhisperConfig(language = "ur")
-                    "hi" -> WhisperConfig(language = "hi")
-                    "en" -> WhisperConfig(language = "en")
-                    else -> WhisperConfig()
+                    "ur" -> WhisperConfig(language = "ur", threads = threads, printTimestamps = false)
+                    "hi" -> WhisperConfig(language = "hi", threads = threads, printTimestamps = false)
+                    "en" -> WhisperConfig(language = "en", threads = threads, printTimestamps = false)
+                    else -> WhisperConfig(language = "auto", threads = threads, printTimestamps = false)
                 }
 
                 val result = Whisper.transcribe(model, wav.absolutePath, config)
-                val text = result.text.trim()
+
+                val text = result.segments
+                    .asSequence()
+                    .map { it.text.trim().replace(Regex("\\s+"), " ") }
+                    .filter { it.isNotBlank() }
+                    .fold(mutableListOf<String>()) { acc, segment ->
+                        if (acc.lastOrNull() != segment) acc.add(segment)
+                        acc
+                    }
+                    .joinToString("\n")
+                    .trim()
+                    .ifBlank { result.text.trim() }
                 check(text.isNotBlank()) {
                     "Whisper returned an empty transcript."
                 }
