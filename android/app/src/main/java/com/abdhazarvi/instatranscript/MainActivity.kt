@@ -91,9 +91,6 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
             "Instagram → on-device transcript",
             style = MaterialTheme.typography.bodyMedium
         )
-
-        val loggedIn = InstagramCookieStore.hasCookies(context)
-
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier.padding(12.dp),
