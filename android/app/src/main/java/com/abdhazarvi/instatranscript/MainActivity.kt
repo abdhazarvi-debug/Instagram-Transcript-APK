@@ -57,6 +57,13 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
     var language by rememberSaveable { mutableStateOf("auto") }
     var loggedIn by remember { mutableStateOf(InstagramCookieStore.hasCookies(context)) }
 
+    val loginLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        loggedIn = result.resultCode == android.app.Activity.RESULT_OK &&
+            InstagramCookieStore.hasCookies(context)
+    }
+
     val saveLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/plain")
     ) { uri ->
@@ -103,10 +110,9 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = {
-                            context.startActivity(
+                            loginLauncher.launch(
                                 Intent(context, InstagramLoginActivity::class.java)
                             )
-                            loggedIn = InstagramCookieStore.hasCookies(context)
                         },
                         enabled = !vm.isBusy
                     ) {
