@@ -1,50 +1,63 @@
 # InstaTranscript
 
-Android app for Instagram video transcription with Auto/Urdu/Hindi/English modes, mixed-language preservation, long-video jobs, and TXT/Markdown/JSON export.
+Android app for turning public/reachable Instagram video or Reel links into transcripts.
 
-## Architecture
+## Self-contained Android architecture
 
-The Android app is a simple client. A Python FastAPI backend performs Instagram media extraction with yt-dlp, audio conversion with FFmpeg, and speech recognition with faster-whisper.
+The APK no longer needs a Python/FastAPI backend or a backend URL.
 
-Language mode is passed as auto, ur, hi, or en. The backend uses transcription, not translation, so it does not intentionally transliterate Urdu/Hindi.
+Flow:
 
-Public/reachable Instagram media is supported. Private or login-required media may need an exported Instagram cookies file.
+    Instagram URL
+        ↓
+    yt-dlp running inside the APK
+        ↓
+    local audio conversion with FFmpeg
+        ↓
+    multilingual Whisper/whisper.cpp running on the phone
+        ↓
+    transcript
+        ↓
+    TXT / Markdown / JSON export
+
+The yt-dlp Android library bundles its runtime inside the app, while the Whisper Android library performs speech recognition locally on-device. The first transcription downloads the multilingual Whisper base model once (~142 MB) and caches it in the app's private storage. Subsequent transcriptions reuse the cached model.
+
+## Language modes
+
+- Auto Detect
+- Urdu
+- Hindi
+- English
+
+The app uses transcription rather than a translation/transliteration stage. For mixed speech, Whisper receives the original audio and is not instructed to translate it to another language.
+
+## Instagram access
+
+Public/reachable Instagram media is supported. Login-required/private media can still fail because Instagram access rules and authentication can change. The app does not ask for an Instagram password.
+
+## Exports
+
+- TXT
+- Markdown
+- JSON
 
 ## Build
 
 Android source is under android/.
 
-Every push to main triggers the Android APK Build workflow. The workflow uploads app-debug.apk as InstaTranscript-debug-apk.
+Every push to main builds release APKs and uploads them as the GitHub Actions artifact:
 
-Backend Docker:
+    InstaTranscript-release-apks
 
-    cp .env.example .env
-    docker compose up --build
+ABI splits are enabled for arm64-v8a and x86_64 to keep device-specific APKs smaller.
 
-Backend health endpoint:
+## Model choice
 
-    GET /health
+The app currently uses Whisper multilingual base. The published Whisper Android documentation lists base at about 142 MB and describes it as a 99-language model suitable as a phone speed/quality trade-off.
 
-The APK needs the backend URL once. On a real phone, use the server LAN/public address, not localhost.
+## Optional backend
 
-## Exports
-
-The app can save:
-- TXT
-- Markdown
-- JSON
-
-The filename base follows:
-
-    Caption by Account
-
-## Resource note
-
-The default Whisper model is large-v3 for quality-first transcription. It is heavy on CPU/RAM. Use a smaller model through WHISPER_MODEL when necessary.
-
-## Security
-
-Do not expose an unauthenticated transcription service publicly. Add authentication, rate limiting and quotas before public deployment.
+The old backend directory remains in the repository for reference/deployment experiments, but the Android app does not depend on it.
 
 ## License
 
