@@ -55,6 +55,7 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
     val context = LocalContext.current
     var url by rememberSaveable { mutableStateOf("") }
     var language by rememberSaveable { mutableStateOf("auto") }
+    var loggedIn by remember { mutableStateOf(InstagramCookieStore.hasCookies(context)) }
 
     val saveLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/plain")
@@ -105,6 +106,7 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
                             context.startActivity(
                                 Intent(context, InstagramLoginActivity::class.java)
                             )
+                            loggedIn = InstagramCookieStore.hasCookies(context)
                         },
                         enabled = !vm.isBusy
                     ) {
@@ -112,7 +114,10 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
                     }
                     if (loggedIn) {
                         TextButton(
-                            onClick = { InstagramCookieStore.clear(context) }
+                            onClick = {
+                                InstagramCookieStore.clear(context)
+                                loggedIn = false
+                            }
                         ) {
                             Text("Clear")
                         }
