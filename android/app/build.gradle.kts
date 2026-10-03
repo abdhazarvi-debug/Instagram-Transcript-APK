@@ -11,7 +11,7 @@ android {
         applicationId = "com.abdhazarvi.instatranscript"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
+        versionCode = 3
         versionName = "0.2.0"
     }
     buildTypes {
@@ -57,6 +57,8 @@ dependencies {
     implementation("dev.ffmpegkit-maintained:yt-dlp-android:2.0.2")
     implementation("dev.ffmpegkit-maintained:yt-dlp-android-compat:2.0.2")
     implementation("dev.ffmpegkit-maintained:ffmpeg-kit-audio:8.1.7")
+    // FFmpegKitConfig initializes SmartException on Android.
+    implementation("com.arthenica:smart-exception-java:0.2.1")
     implementation("dev.ffmpegkit-maintained:whisper-android:1.0.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
