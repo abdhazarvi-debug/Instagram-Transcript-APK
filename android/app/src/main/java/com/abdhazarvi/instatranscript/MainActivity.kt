@@ -1,5 +1,6 @@
 package com.abdhazarvi.instatranscript
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -81,6 +82,44 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
             "Instagram → on-device transcript",
             style = MaterialTheme.typography.bodyMedium
         )
+
+        val loggedIn = InstagramCookieStore.hasCookies(context)
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    if (loggedIn) "Instagram session: saved on this phone"
+                    else "Instagram session: not connected",
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    "Instagram may block anonymous downloads. Login once here if a Reel fails.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            context.startActivity(
+                                Intent(context, InstagramLoginActivity::class.java)
+                            )
+                        },
+                        enabled = !vm.isBusy
+                    ) {
+                        Text(if (loggedIn) "Re-login" else "Instagram Login")
+                    }
+                    if (loggedIn) {
+                        TextButton(
+                            onClick = { InstagramCookieStore.clear(context) }
+                        ) {
+                            Text("Clear")
+                        }
+                    }
+                }
+            }
+        }
 
         OutlinedTextField(
             value = url,
@@ -200,7 +239,7 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
         }
 
         Text(
-            "No backend URL, API key, or cloud transcription is required.",
+            "No backend URL or cloud transcription is required. Instagram cookies, when used, remain in app-private storage.",
             style = MaterialTheme.typography.bodySmall
         )
     }
