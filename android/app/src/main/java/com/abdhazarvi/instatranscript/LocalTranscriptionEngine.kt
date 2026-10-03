@@ -14,7 +14,9 @@ import java.util.UUID
 
 data class LocalTranscriptResult(
     val transcript: String,
-    val detectedLanguage: String?
+    val detectedLanguage: String?,
+    val title: String,
+    val account: String
 )
 
 class LocalTranscriptionEngine(private val context: Context) {
@@ -37,6 +39,7 @@ class LocalTranscriptionEngine(private val context: Context) {
             val request = YoutubeDLRequest(instagramUrl)
             request.addOption("--no-playlist")
             request.addOption("--no-mtime")
+            request.addOption("--print", "after_move:%(title)s|||%(uploader)s")
             request.addOption("-f", "bestaudio/best")
             request.addOption("-o", mediaTemplate)
 
@@ -65,6 +68,24 @@ class LocalTranscriptionEngine(private val context: Context) {
                     "Instagram download failed."
                 }
             }
+
+            val metadata = response.out
+                .lineSequence()
+                .map { it.trim() }
+                .filter { it.contains("|||") }
+                .lastOrNull()
+
+            val title = metadata
+                ?.substringBefore("|||")
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+                ?: "Instagram Transcript"
+
+            val account = metadata
+                ?.substringAfter("|||")
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+                ?: ""
 
             onStatus("Converting audio locally…", 52)
             val wav = File(workDir, "audio.wav")
@@ -107,7 +128,9 @@ class LocalTranscriptionEngine(private val context: Context) {
                 onStatus("Finished", 100)
                 LocalTranscriptResult(
                     transcript = text,
-                    detectedLanguage = language.takeUnless { it == "auto" }
+                    detectedLanguage = language.takeUnless { it == "auto" },
+                    title = title,
+                    account = account
                 )
             } finally {
                 Whisper.releaseModel(model)
