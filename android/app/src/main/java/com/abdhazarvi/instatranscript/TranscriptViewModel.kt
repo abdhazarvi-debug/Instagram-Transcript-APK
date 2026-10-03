@@ -111,8 +111,8 @@ class TranscriptViewModel : ViewModel() {
                 val escapedTitle = title.orEmpty()
                     .replace("\\\\", "\\\\\\\\")
                     .replace("\"", "\\\"")
-                    .replace("\\n", "\\\\n")
-                    .replace("\\r", "\\\\r")
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r")
                 val escapedLanguage = detectedLanguage.orEmpty()
                     .replace("\"", "\\\"")
                 val escapedBody = body
