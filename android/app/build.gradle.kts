@@ -14,7 +14,12 @@ android {
         versionCode = 2
         versionName = "0.2.0"
     }
-    buildTypes { release { isMinifyEnabled = false } }
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
