@@ -106,7 +106,7 @@ class TranscriptViewModel : ViewModel() {
     fun exportText(): String {
         val body = transcript.orEmpty()
         return when (exportType) {
-            "md" -> "# " + title.orEmpty() + "\\n\\n" + body + "\\n"
+            "md" -> "# " + title.orEmpty() + "\n\n" + body + "\n"
             "json" -> {
                 val escapedTitle = title.orEmpty()
                     .replace("\\\\", "\\\\\\\\")
@@ -118,11 +118,11 @@ class TranscriptViewModel : ViewModel() {
                 val escapedBody = body
                     .replace("\\\\", "\\\\\\\\")
                     .replace("\"", "\\\"")
-                    .replace("\\n", "\\\\n")
-                    .replace("\\r", "\\\\r")
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r")
                 """{"title":"$escapedTitle","detected_language":"$escapedLanguage","transcript":"$escapedBody"}"""
             }
-            else -> body + "\\n"
+            else -> body + "\n"
         }
     }
 
