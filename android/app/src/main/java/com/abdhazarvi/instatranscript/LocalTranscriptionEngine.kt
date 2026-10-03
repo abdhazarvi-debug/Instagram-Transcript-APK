@@ -3,8 +3,8 @@ package com.abdhazarvi.instatranscript
 import android.content.Context
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.ReturnCode
-import com.yausername.youtubedl_android.YoutubeDL
-import com.yausername.youtubedl_android.YoutubeDLRequest
+import dev.ffmpegkit_maintained.ytdlp.compat.YoutubeDL
+import dev.ffmpegkit_maintained.ytdlp.compat.YoutubeDLRequest
 import dev.ffmpegkit.whisper.Whisper
 import dev.ffmpegkit.whisper.WhisperConfig
 import kotlinx.coroutines.Dispatchers
