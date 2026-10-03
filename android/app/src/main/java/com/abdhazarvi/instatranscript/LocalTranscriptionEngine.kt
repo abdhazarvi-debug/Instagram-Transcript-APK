@@ -42,6 +42,11 @@ class LocalTranscriptionEngine(private val context: Context) {
                 .addOption("--no-mtime")
                 .addOption("--print", "after_move:%(title)s|||%(uploader)s")
                 .addOption("-f", "bestaudio/best")
+            .also {
+                if (InstagramCookieStore.hasCookies(context)) {
+                    it.addOption("--cookies", InstagramCookieStore.cookieFile(context).absolutePath)
+                }
+            }
 
             var metadataLine = ""
             onStatus("Downloading Instagram media…", 5)
@@ -64,7 +69,11 @@ class LocalTranscriptionEngine(private val context: Context) {
                 ?: error("Instagram media download completed but no media file was found.")
 
             check(response.isSuccess) {
-                "Instagram download failed (exit " + response.exitCode + ")."
+                if (InstagramCookieStore.hasCookies(context)) {
+                    "Instagram download failed (exit " + response.exitCode + "). Your saved Instagram session may have expired. Tap Re-login in the app and try again."
+                } else {
+                    "Instagram blocked anonymous access (login/rate-limit). Tap Instagram Login in the app, log in, then try the Reel again."
+                }
             }
 
             val title = metadataLine
