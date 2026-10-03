@@ -1,5 +1,6 @@
 package com.abdhazarvi.instatranscript
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -29,6 +30,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -54,6 +56,14 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
     val context = LocalContext.current
     var url by rememberSaveable { mutableStateOf("") }
     var language by rememberSaveable { mutableStateOf("auto") }
+    var loggedIn by remember { mutableStateOf(InstagramCookieStore.hasCookies(context)) }
+
+    val loginLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        loggedIn = result.resultCode == android.app.Activity.RESULT_OK &&
+            InstagramCookieStore.hasCookies(context)
+    }
 
     val saveLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/plain")
@@ -81,6 +91,44 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
             "Instagram → on-device transcript",
             style = MaterialTheme.typography.bodyMedium
         )
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    if (loggedIn) "Instagram session: saved on this phone"
+                    else "Instagram session: not connected",
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    "Instagram may block anonymous downloads. Login once here if a Reel fails.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            loginLauncher.launch(
+                                Intent(context, InstagramLoginActivity::class.java)
+                            )
+                        },
+                        enabled = !vm.isBusy
+                    ) {
+                        Text(if (loggedIn) "Re-login" else "Instagram Login")
+                    }
+                    if (loggedIn) {
+                        TextButton(
+                            onClick = {
+                                InstagramCookieStore.clear(context)
+                                loggedIn = false
+                            }
+                        ) {
+                            Text("Clear")
+                        }
+                    }
+                }
+            }
+        }
 
         OutlinedTextField(
             value = url,
@@ -200,7 +248,7 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
         }
 
         Text(
-            "No backend URL, API key, or cloud transcription is required.",
+            "No backend URL or cloud transcription is required. Instagram cookies, when used, remain in app-private storage.",
             style = MaterialTheme.typography.bodySmall
         )
     }

@@ -33,7 +33,13 @@ The app uses transcription rather than a translation/transliteration stage. For 
 
 ## Instagram access
 
-Public/reachable Instagram media is supported. Login-required/private media can still fail because Instagram access rules and authentication can change. The app does not ask for an Instagram password.
+Instagram can block anonymous media extraction with login or rate-limit errors. This is an Instagram-side access restriction, and recent yt-dlp reports show the same failure mode for public-looking Reel URLs. citeturn943988search5
+
+The APK therefore includes an optional **Instagram Login** screen. Log in inside the app, tap **Done**, and the app stores a local Netscape-format cookie file in private app storage. yt-dlp then uses those cookies automatically for the Reel download. The cookies are not uploaded to the backend because the Android app does not use a backend.
+
+The maintainer's Android yt-dlp library documents the same cookie-based authentication flow with `--cookies`. citeturn284878search0
+
+Private/login-required media may still fail if Instagram changes its session or blocks the device/IP. In that case, re-login in the app.
 
 ## Exports
 
