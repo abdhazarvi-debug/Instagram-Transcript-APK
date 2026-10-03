@@ -1,6 +1,5 @@
 package com.abdhazarvi.instatranscript
 
-import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -21,13 +20,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberSaveable
@@ -40,15 +39,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.abdhazarvi.instatranscript.ui.theme.InstaTranscriptTheme
-import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            InstaTranscriptTheme {
-                TranscriptScreen()
-            }
+            InstaTranscriptTheme { TranscriptScreen() }
         }
     }
 }
@@ -56,7 +52,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
     val context = LocalContext.current
-    var serverUrl by rememberSaveable { mutableStateOf(Preferences.getServerUrl(context)) }
     var url by rememberSaveable { mutableStateOf("") }
     var language by rememberSaveable { mutableStateOf("auto") }
 
@@ -83,19 +78,8 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
             fontWeight = FontWeight.Bold
         )
         Text(
-            "Instagram video → transcript",
+            "Instagram → on-device transcript",
             style = MaterialTheme.typography.bodyMedium
-        )
-
-        OutlinedTextField(
-            value = serverUrl,
-            onValueChange = { serverUrl = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Backend URL") },
-            singleLine = true,
-            supportingText = {
-                Text("Example: http://192.168.1.10:8000")
-            }
         )
 
         OutlinedTextField(
@@ -105,7 +89,7 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
             label = { Text("Instagram video / reel URL") }
         )
 
-        Text("Language", fontWeight = FontWeight.SemiBold)
+        Text("Spoken language", fontWeight = FontWeight.SemiBold)
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -117,34 +101,26 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
                 "hi" to "Hindi",
                 "en" to "English"
             ).forEach { item ->
-                val code = item.first
-                val label = item.second
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.selectable(
-                        selected = language == code,
-                        onClick = { language = code },
+                        selected = language == item.first,
+                        onClick = { language = item.first },
                         role = Role.RadioButton
                     )
                 ) {
-                    RadioButton(
-                        selected = language == code,
-                        onClick = null
-                    )
-                    Text(label)
+                    RadioButton(selected = language == item.first, onClick = null)
+                    Text(item.second)
                 }
             }
         }
 
         Button(
-            onClick = {
-                Preferences.setServerUrl(context, serverUrl)
-                vm.start(serverUrl, url, language)
-            },
-            enabled = !vm.isBusy && serverUrl.isNotBlank() && url.isNotBlank(),
+            onClick = { vm.start(context, url, language) },
+            enabled = !vm.isBusy && url.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (vm.isBusy) "Working…" else "Transcribe Video")
+            Text(if (vm.isBusy) "Working…" else "Transcribe")
         }
 
         if (vm.isBusy) {
@@ -163,9 +139,12 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
                             Text(vm.progress.toString() + "%")
                         }
                     }
-                    Divider()
+                    LinearProgressIndicator(
+                        progress = { vm.progress / 100f },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     Text(
-                        "Long videos are processed as background jobs. Keep this screen open."
+                        "First use downloads the multilingual Whisper model once. Transcription itself runs locally."
                     )
                 }
             }
@@ -177,9 +156,7 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
                     Text("Error", fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
                     Text(message)
-                    TextButton(onClick = vm::clearError) {
-                        Text("Dismiss")
-                    }
+                    TextButton(onClick = vm::clearError) { Text("Dismiss") }
                 }
             }
         }
@@ -196,71 +173,35 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        "Detected: " + (vm.detectedLanguage ?: "unknown"),
+                        "Language: " + (vm.detectedLanguage ?: "auto"),
                         style = MaterialTheme.typography.bodySmall
                     )
                     Divider()
                     Text(resultText)
+
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = {
-                                vm.setExportType("txt")
-                                saveLauncher.launch(vm.safeFilename("txt"))
-                            }
-                        ) {
-                            Text("TXT")
-                        }
-                        Button(
-                            onClick = {
-                                vm.setExportType("md")
-                                saveLauncher.launch(vm.safeFilename("md"))
-                            }
-                        ) {
-                            Text("MD")
-                        }
-                        Button(
-                            onClick = {
-                                vm.setExportType("json")
-                                saveLauncher.launch(vm.safeFilename("json"))
-                            }
-                        ) {
-                            Text("JSON")
-                        }
+                        Button(onClick = {
+                            vm.setExportType("txt")
+                            saveLauncher.launch(vm.safeFilename("txt"))
+                        }) { Text("TXT") }
+
+                        Button(onClick = {
+                            vm.setExportType("md")
+                            saveLauncher.launch(vm.safeFilename("md"))
+                        }) { Text("MD") }
+
+                        Button(onClick = {
+                            vm.setExportType("json")
+                            saveLauncher.launch(vm.safeFilename("json"))
+                        }) { Text("JSON") }
                     }
                 }
             }
         }
 
         Text(
-            "The service transcribes spoken language; it does not intentionally translate or transliterate it.",
+            "No backend URL, API key, or cloud transcription is required.",
             style = MaterialTheme.typography.bodySmall
         )
-    }
-
-    LaunchedEffect(vm.jobId, vm.isBusy, serverUrl) {
-        val id = vm.jobId ?: return@LaunchedEffect
-        while (vm.isBusy && vm.jobId == id) {
-            vm.poll(serverUrl, id)
-            if (vm.isBusy) {
-                delay(2000)
-            }
-        }
-    }
-}
-
-private object Preferences {
-    private const val PREFS = "insta_transcript"
-    private const val SERVER = "server_url"
-
-    fun getServerUrl(context: Context): String =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(SERVER, "http://10.0.2.2:8000")
-            ?: "http://10.0.2.2:8000"
-
-    fun setServerUrl(context: Context, value: String) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putString(SERVER, value.trim().removeSuffix("/"))
-            .apply()
     }
 }
