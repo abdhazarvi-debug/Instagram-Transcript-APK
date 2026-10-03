@@ -3,36 +3,28 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
-
 android {
-    buildFeatures {
-        compose = true
-    }
-
+    buildFeatures { compose = true }
     namespace = "com.abdhazarvi.instatranscript"
     compileSdk = 35
-
     defaultConfig {
         applicationId = "com.abdhazarvi.instatranscript"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
     }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = false
+    buildTypes { release { isMinifyEnabled = false } }
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "x86_64")
+            isUniversalApk = false
         }
     }
-
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-    }
+    packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
 }
-
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2025.02.00")
     implementation(composeBom)
@@ -45,7 +37,11 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
+    implementation("dev.ffmpegkit-maintained:yt-dlp-android:2.0.2")
+    implementation("dev.ffmpegkit-maintained:yt-dlp-android-compat:2.0.2")
+    implementation("dev.ffmpegkit-maintained:ffmpeg-kit-audio:8.1.7")
+    implementation("dev.ffmpegkit-maintained:whisper-android:1.0.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
