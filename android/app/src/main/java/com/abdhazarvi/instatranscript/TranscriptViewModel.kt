@@ -48,9 +48,9 @@ class TranscriptViewModel : ViewModel() {
                     }
 
                 transcript = result.transcript
-                title = "Instagram Transcript"
+                title = result.title
                 detectedLanguage = result.detectedLanguage ?: language
-                filenameBase = "Instagram Transcript"
+                filenameBase = if (result.account.isBlank()) result.title else result.title + " by " + result.account
                 isBusy = false
             } catch (t: Throwable) {
                 isBusy = false
