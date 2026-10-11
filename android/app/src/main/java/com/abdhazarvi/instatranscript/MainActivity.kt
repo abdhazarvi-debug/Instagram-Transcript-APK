@@ -88,7 +88,7 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
             fontWeight = FontWeight.Bold
         )
         Text(
-            "Instagram → high-accuracy on-device transcript",
+            "Instagram / Facebook → free on-device transcript",
             style = MaterialTheme.typography.bodyMedium
         )
         Card(modifier = Modifier.fillMaxWidth()) {
@@ -102,7 +102,7 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    "Instagram may block anonymous downloads. Login once here if a Reel fails.",
+                    "Public links work without an account. If a source blocks anonymous access, login stays only on this phone.",
                     style = MaterialTheme.typography.bodySmall
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -134,7 +134,9 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
             value = url,
             onValueChange = { url = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Instagram video / reel URL") }
+            label = { Text("Instagram or Facebook video / Reel URL") },
+            placeholder = { Text("https://www.instagram.com/reel/... or https://www.facebook.com/...") },
+            singleLine = true
         )
 
         Text("Spoken language", fontWeight = FontWeight.SemiBold)
@@ -192,7 +194,7 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
                         modifier = Modifier.fillMaxWidth()
                     )
                     Text(
-                        "First use downloads the higher-accuracy multilingual Whisper Small model (~466 MB) once. Transcription runs locally."
+                        "First use downloads the multilingual Whisper Small model (~466 MB) once. No AI API or cloud transcription is used."
                     )
                 }
             }
@@ -248,7 +250,7 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
         }
 
         Text(
-            "No backend URL or cloud transcription is required. Instagram cookies, when used, remain in app-private storage.",
+            "100% local and free: no backend URL, paid AI API, or cloud transcription. Cookies, when used, remain in app-private storage.",
             style = MaterialTheme.typography.bodySmall
         )
     }

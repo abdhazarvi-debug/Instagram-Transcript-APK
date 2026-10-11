@@ -10,6 +10,7 @@ import dev.ffmpegkit.whisper.WhisperConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.net.URI
 import java.util.UUID
 
 data class LocalTranscriptResult(
@@ -26,6 +27,7 @@ class LocalTranscriptionEngine(private val context: Context) {
         language: String,
         onStatus: (String, Int) -> Unit
     ): LocalTranscriptResult = withContext(Dispatchers.IO) {
+        validateVideoUrl(instagramUrl)
         val workDir = File(
             context.cacheDir,
             "transcript-" + UUID.randomUUID().toString()
@@ -61,26 +63,25 @@ class LocalTranscriptionEngine(private val context: Context) {
                 )
             }
 
+            check(response.isSuccess) {
+                if (InstagramCookieStore.hasCookies(context)) {
+                    "Video download failed (exit " + response.exitCode + "). Your saved session may have expired. Tap Re-login and try again."
+                } else {
+                    "Video download was blocked by the source site. Try a public link, or tap Login and try again."
+                }
+            }
             val media = workDir.listFiles()
                 ?.firstOrNull {
                     it.name.startsWith("media.") &&
                         !it.name.endsWith(".part")
                 }
-                ?: error("Instagram media download completed but no media file was found.")
-
-            check(response.isSuccess) {
-                if (InstagramCookieStore.hasCookies(context)) {
-                    "Instagram download failed (exit " + response.exitCode + "). Your saved Instagram session may have expired. Tap Re-login in the app and try again."
-                } else {
-                    "Instagram blocked anonymous access (login/rate-limit). Tap Instagram Login in the app, log in, then try the Reel again."
-                }
-            }
+                ?: error("The downloader completed but did not produce a video or audio file.")
 
             val title = metadataLine
                 .substringBefore("|||")
                 .trim()
                 .takeIf { it.isNotBlank() }
-                ?: "Instagram Transcript"
+                ?: "Video Transcript"
 
             val account = metadataLine
                 .substringAfter("|||", "")
@@ -142,7 +143,9 @@ class LocalTranscriptionEngine(private val context: Context) {
                 onStatus("Finished", 100)
                 LocalTranscriptResult(
                     transcript = text,
-                    detectedLanguage = language.takeUnless { it == "auto" },
+                    // The multilingual model detects the language for auto mode. This
+                    // wrapper does not expose its ISO code, so do not report a guess.
+                    detectedLanguage = language.takeUnless { it == "auto" } ?: "Auto-detected",
                     title = title,
                     account = account
                 )
@@ -156,4 +159,16 @@ class LocalTranscriptionEngine(private val context: Context) {
 
     private fun quote(value: String): String =
         "'" + value.replace("'", "'\\''") + "'"
+
+    private fun validateVideoUrl(value: String) {
+        val uri = runCatching { URI(value.trim()) }.getOrNull()
+            ?: error("Please paste a valid video link.")
+        val host = uri.host?.lowercase()?.removePrefix("www.")
+            ?: error("Please paste a valid video link.")
+        val allowed = host == "instagram.com" || host.endsWith(".instagram.com") ||
+            host == "facebook.com" || host.endsWith(".facebook.com") || host == "fb.watch"
+        check(uri.scheme in setOf("http", "https") && allowed) {
+            "Only public Instagram, Facebook, and fb.watch video links are supported."
+        }
+    }
 }

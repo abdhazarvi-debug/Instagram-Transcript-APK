@@ -23,7 +23,7 @@ class TranscriptViewModel : ViewModel() {
         private set
     var detectedLanguage by mutableStateOf<String?>(null)
         private set
-    var filenameBase by mutableStateOf("instagram-transcript")
+    var filenameBase by mutableStateOf("video-transcript")
         private set
     var error by mutableStateOf<String?>(null)
         private set
@@ -35,7 +35,7 @@ class TranscriptViewModel : ViewModel() {
         transcript = null
         title = null
         detectedLanguage = null
-        filenameBase = "instagram-transcript"
+        filenameBase = "video-transcript"
         progress = 0
         status = "Starting…"
         isBusy = true
@@ -51,11 +51,8 @@ class TranscriptViewModel : ViewModel() {
                 transcript = result.transcript
                 title = result.title
                 detectedLanguage = result.detectedLanguage ?: language
-                filenameBase = if (result.account.isBlank()) {
-                    result.title
-                } else {
-                    result.title + " by " + result.account
-                }
+                // Match the source video's title; account is metadata only.
+                filenameBase = result.title
                 isBusy = false
             } catch (t: Throwable) {
                 isBusy = false
@@ -73,7 +70,7 @@ class TranscriptViewModel : ViewModel() {
         filenameBase
             .replace(Regex("""[\\/:*?"<>|\r\n]+"""), "_")
             .trim()
-            .ifBlank { "instagram-transcript" } + "." + extension
+            .ifBlank { "video-transcript" } + "." + extension
 
     fun exportText(): String {
         val body = transcript.orEmpty()
