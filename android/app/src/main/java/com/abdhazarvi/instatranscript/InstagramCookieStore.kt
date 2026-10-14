@@ -10,8 +10,37 @@ object InstagramCookieStore {
     fun cookieFile(context: Context): File =
         File(context.filesDir, FILE_NAME)
 
-    fun hasCookies(context: Context): Boolean =
-        cookieFile(context).let { it.exists() && it.length() > 40L }
+    fun sessionDetectedInWebView(): Boolean {
+        val header = CookieManager.getInstance()
+            .getCookie("https://www.instagram.com/")
+            .orEmpty()
+        return header.split(';').any { raw ->
+            val item = raw.trim()
+            val separator = item.indexOf('=')
+            separator > 0 &&
+                item.substring(0, separator).trim() == "sessionid" &&
+                item.substring(separator + 1).isNotBlank()
+        }
+    }
+
+    fun hasCookies(context: Context): Boolean {
+        val file = cookieFile(context)
+        if (!file.exists() || file.length() < 40L) return false
+        return runCatching {
+            file.useLines { lines ->
+                lines.any { line ->
+                    if (line.startsWith("#")) {
+                        false
+                    } else {
+                        val fields = line.split('\t')
+                        fields.size >= 7 &&
+                            fields[5] == "sessionid" &&
+                            fields[6].isNotBlank()
+                    }
+                }
+            }
+        }.getOrDefault(false)
+    }
 
     fun saveFromWebView(context: Context): Boolean {
         val manager = CookieManager.getInstance()
@@ -28,10 +57,10 @@ object InstagramCookieStore {
                 if (eq <= 0) return@mapNotNull null
                 val name = item.substring(0, eq).trim()
                 val value = item.substring(eq + 1).trim()
-                if (name.isBlank()) null else "$name\t$value"
+                if (name.isBlank() || value.isBlank()) null else "$name\t$value"
             }
 
-        if (lines.isEmpty()) return false
+        if (lines.none { it.substringBefore('\t') == "sessionid" }) return false
 
         val text = buildString {
             append("# Netscape HTTP Cookie File\n")
@@ -53,10 +82,14 @@ object InstagramCookieStore {
         temp.writeText(text, Charsets.UTF_8)
         if (target.exists()) target.delete()
         check(temp.renameTo(target)) { "Could not save Instagram session." }
-        return true
+        return hasCookies(context)
     }
 
     fun clear(context: Context) {
         cookieFile(context).delete()
+        val manager = CookieManager.getInstance()
+        manager.removeAllCookies {
+            manager.flush()
+        }
     }
 }
