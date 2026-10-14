@@ -57,12 +57,21 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
     var url by rememberSaveable { mutableStateOf("") }
     var language by rememberSaveable { mutableStateOf("auto") }
     var loggedIn by remember { mutableStateOf(InstagramCookieStore.hasCookies(context)) }
+    var pendingUrl by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingLanguage by rememberSaveable { mutableStateOf("auto") }
 
     val loginLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        loggedIn = result.resultCode == android.app.Activity.RESULT_OK &&
-            InstagramCookieStore.hasCookies(context)
+        loggedIn = InstagramCookieStore.hasCookies(context)
+        val urlToResume = pendingUrl
+        if (result.resultCode == android.app.Activity.RESULT_OK && loggedIn &&
+            !urlToResume.isNullOrBlank()) {
+            pendingUrl = null
+            vm.start(context, urlToResume, pendingLanguage)
+        } else {
+            pendingUrl = null
+        }
     }
 
     val saveLauncher = rememberLauncherForActivityResult(
@@ -102,7 +111,7 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    "Public links work without an account. If a source blocks anonymous access, login stays only on this phone.",
+                    "If login is needed, Transcribe opens the in-app Instagram browser first. Sign in once; the session is saved on this phone for later runs.",
                     style = MaterialTheme.typography.bodySmall
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -166,7 +175,15 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
         }
 
         Button(
-            onClick = { vm.start(context, url, language) },
+            onClick = {
+                if (InstagramCookieStore.hasCookies(context)) {
+                    vm.start(context, url, language)
+                } else {
+                    pendingUrl = url.trim()
+                    pendingLanguage = language
+                    loginLauncher.launch(Intent(context, InstagramLoginActivity::class.java))
+                }
+            },
             enabled = !vm.isBusy && url.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -250,7 +267,7 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
         }
 
         Text(
-            "100% local and free: no backend URL, paid AI API, or cloud transcription. Cookies, when used, remain in app-private storage.",
+            "100% local and free: no backend URL, paid AI API, or cloud transcription. Instagram session cookies remain in app-private storage and are used only for media downloads.",
             style = MaterialTheme.typography.bodySmall
         )
     }
