@@ -27,11 +27,14 @@ class TranscriptViewModel : ViewModel() {
         private set
     var error by mutableStateOf<String?>(null)
         private set
+    var loginRequired by mutableStateOf(false)
+        private set
 
     private var exportType = "txt"
 
     fun start(context: Context, instagramUrl: String, language: String) {
         error = null
+        loginRequired = false
         transcript = null
         title = null
         detectedLanguage = null
@@ -56,10 +59,20 @@ class TranscriptViewModel : ViewModel() {
                 isBusy = false
             } catch (t: Throwable) {
                 isBusy = false
-                error = t.message ?: "Transcription failed."
-                status = "Failed"
+                if (t is InstagramLoginRequiredException) {
+                    error = null
+                    status = "Instagram login required"
+                    loginRequired = true
+                } else {
+                    error = t.message ?: "Transcription failed."
+                    status = "Failed"
+                }
             }
         }
+    }
+
+    fun clearLoginRequest() {
+        loginRequired = false
     }
 
     fun setExportType(type: String) {

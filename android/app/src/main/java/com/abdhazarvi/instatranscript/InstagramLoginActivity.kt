@@ -28,20 +28,20 @@ class InstagramLoginActivity : Activity() {
         }
 
         val title = TextView(this).apply {
-            text = "Instagram Login"
+            text = "Connect Instagram"
             textSize = 20f
             setTextColor(Color.BLACK)
         }
 
         val hint = TextView(this).apply {
-            text = "Log in normally, then tap Done. Your session stays on this device and is never uploaded."
+            text = "Sign in here once. If this screen opened from Transcribe, the app will automatically continue your transcript when you tap Continue. Your session stays on this phone."
             textSize = 14f
             setTextColor(Color.DKGRAY)
             setPadding(0, 6, 0, 10)
         }
 
         val done = Button(this).apply {
-            text = "Done"
+            text = "Continue"
             setOnClickListener {
                 val saved = InstagramCookieStore.saveFromWebView(this@InstagramLoginActivity)
                 if (saved) {
@@ -49,7 +49,7 @@ class InstagramLoginActivity : Activity() {
                     finish()
                 } else {
                     hint.text =
-                        "Instagram session was not detected yet. Finish logging in, wait a moment, then tap Done."
+                        "An authenticated Instagram session was not detected. Finish logging in, wait a moment, then tap Continue."
                 }
             }
         }
@@ -62,7 +62,15 @@ class InstagramLoginActivity : Activity() {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.loadsImagesAutomatically = true
-            webViewClient = WebViewClient()
+            webViewClient = object : WebViewClient() {
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    CookieManager.getInstance().flush()
+                    if (InstagramCookieStore.sessionDetectedInWebView()) {
+                        hint.text =
+                            "Instagram login detected. Tap Continue to save the session and return to your transcript."
+                    }
+                }
+            }
             loadUrl("https://www.instagram.com/accounts/login/")
         }
 

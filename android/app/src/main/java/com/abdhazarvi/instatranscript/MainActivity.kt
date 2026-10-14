@@ -28,6 +28,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,11 +59,48 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
     var language by rememberSaveable { mutableStateOf("auto") }
     var loggedIn by remember { mutableStateOf(InstagramCookieStore.hasCookies(context)) }
 
+    // Keep the requested job while the login screen is open so it can resume on return.
+    var pendingUrl by rememberSaveable { mutableStateOf("") }
+    var pendingLanguage by rememberSaveable { mutableStateOf("auto") }
+    var loginNotice by rememberSaveable { mutableStateOf<String?>(null) }
+
     val loginLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        loggedIn = result.resultCode == android.app.Activity.RESULT_OK &&
-            InstagramCookieStore.hasCookies(context)
+        loggedIn = InstagramCookieStore.hasCookies(context)
+        val queuedUrl = pendingUrl
+        if (result.resultCode == android.app.Activity.RESULT_OK && loggedIn) {
+            loginNotice = null
+            if (queuedUrl.isNotBlank()) {
+                pendingUrl = ""
+                vm.start(context, queuedUrl, pendingLanguage)
+            }
+        } else if (queuedUrl.isNotBlank()) {
+            pendingUrl = ""
+            loginNotice = "Instagram login was not completed. Tap Transcribe again when you're ready to retry."
+        }
+    }
+
+    // If yt-dlp fails because there is no saved Instagram session, open login automatically.
+    LaunchedEffect(vm.loginRequired) {
+        if (vm.loginRequired) {
+            vm.clearLoginRequest()
+            if (pendingUrl.isNotBlank()) {
+                loginNotice = "Please log in to Instagram once. This transcription will resume automatically when you return."
+                loginLauncher.launch(Intent(context, InstagramLoginActivity::class.java))
+            } else {
+                loginNotice = "Instagram login is required. Tap Instagram Login to connect your account."
+            }
+        }
+    }
+
+    // Do not keep a stale URL queued once a job has finished or failed for another reason.
+    LaunchedEffect(vm.isBusy, vm.transcript, vm.error, vm.loginRequired) {
+        if (!vm.isBusy && !vm.loginRequired &&
+            (vm.transcript != null || vm.error != null)
+        ) {
+            pendingUrl = ""
+        }
     }
 
     val saveLauncher = rememberLauncherForActivityResult(
@@ -91,6 +129,7 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
             "Instagram / Facebook → free on-device transcript",
             style = MaterialTheme.typography.bodyMedium
         )
+
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier.padding(12.dp),
@@ -102,12 +141,14 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    "Public links work without an account. If a source blocks anonymous access, login stays only on this phone.",
+                    "A public link is tried first. If Instagram requires login, its login screen opens automatically and the transcript resumes after you sign in. The session stays on this phone.",
                     style = MaterialTheme.typography.bodySmall
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = {
+                            pendingUrl = ""
+                            loginNotice = null
                             loginLauncher.launch(
                                 Intent(context, InstagramLoginActivity::class.java)
                             )
@@ -121,6 +162,7 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
                             onClick = {
                                 InstagramCookieStore.clear(context)
                                 loggedIn = false
+                                loginNotice = "Saved app session cleared."
                             }
                         ) {
                             Text("Clear")
@@ -166,11 +208,27 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
         }
 
         Button(
-            onClick = { vm.start(context, url, language) },
+            onClick = {
+                pendingUrl = url.trim()
+                pendingLanguage = language
+                loginNotice = null
+                vm.start(context, pendingUrl, pendingLanguage)
+            },
             enabled = !vm.isBusy && url.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(if (vm.isBusy) "Working…" else "Transcribe")
+        }
+
+        loginNotice?.let { message ->
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(message)
+                    TextButton(onClick = { loginNotice = null }) {
+                        Text("Dismiss")
+                    }
+                }
+            }
         }
 
         if (vm.isBusy) {
@@ -207,6 +265,19 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
                     Spacer(Modifier.height(4.dp))
                     Text(message)
                     TextButton(onClick = vm::clearError) { Text("Dismiss") }
+                    TextButton(
+                        onClick = {
+                            pendingUrl = url.trim()
+                            pendingLanguage = language
+                            loginNotice = null
+                            loginLauncher.launch(
+                                Intent(context, InstagramLoginActivity::class.java)
+                            )
+                        },
+                        enabled = !vm.isBusy
+                    ) {
+                        Text("Login and retry")
+                    }
                 }
             }
         }
@@ -250,7 +321,7 @@ private fun TranscriptScreen(vm: TranscriptViewModel = viewModel()) {
         }
 
         Text(
-            "100% local and free: no backend URL, paid AI API, or cloud transcription. Cookies, when used, remain in app-private storage.",
+            "100% local and free: no backend URL, paid AI API, or cloud transcription. Cookies used by the downloader stay in this app's private storage; Android does not let this app read Chrome's cookie database.",
             style = MaterialTheme.typography.bodySmall
         )
     }
