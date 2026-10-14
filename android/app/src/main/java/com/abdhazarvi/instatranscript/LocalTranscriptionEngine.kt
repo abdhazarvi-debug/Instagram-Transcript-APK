@@ -13,6 +13,10 @@ import java.io.File
 import java.net.URI
 import java.util.UUID
 
+class InstagramLoginRequiredException : Exception(
+    "Instagram login is required. The login screen will open so you can sign in once."
+)
+
 data class LocalTranscriptResult(
     val transcript: String,
     val detectedLanguage: String?,
@@ -44,11 +48,14 @@ class LocalTranscriptionEngine(private val context: Context) {
                 .addOption("--no-mtime")
                 .addOption("--print", "after_move:%(title)s|||%(uploader)s")
                 .addOption("-f", "bestaudio/best")
-            .also {
-                if (InstagramCookieStore.hasCookies(context)) {
-                    it.addOption("--cookies", InstagramCookieStore.cookieFile(context).absolutePath)
+                .also {
+                    if (InstagramCookieStore.hasCookies(context)) {
+                        it.addOption(
+                            "--cookies",
+                            InstagramCookieStore.cookieFile(context).absolutePath
+                        )
+                    }
                 }
-            }
 
             var metadataLine = ""
             onStatus("Downloading Instagram media…", 5)
@@ -63,13 +70,16 @@ class LocalTranscriptionEngine(private val context: Context) {
                 )
             }
 
-            check(response.isSuccess) {
-                if (InstagramCookieStore.hasCookies(context)) {
-                    "Video download failed (exit " + response.exitCode + "). Your saved session may have expired. Tap Re-login and try again."
-                } else {
-                    "Video download was blocked by the source site. Try a public link, or tap Login and try again."
+            if (!response.isSuccess) {
+                if (!InstagramCookieStore.hasCookies(context)) {
+                    throw InstagramLoginRequiredException()
                 }
+                error(
+                    "Video download failed (exit " + response.exitCode +
+                        "). Your saved Instagram session may have expired or the Reel is unavailable. Tap Re-login and try again."
+                )
             }
+
             val media = workDir.listFiles()
                 ?.firstOrNull {
                     it.name.startsWith("media.") &&
